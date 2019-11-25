@@ -425,22 +425,41 @@ end do      ; End loop over initialisation times (do in = 0, dimsizes(dat_arr)-1
     opts_vec@vcRefAnnoOn                 = False
     opts_vec@vcRefAnnoOrthogonalPosF     = 0.02          ; Y-location of ref vec
 
+
+    opts_fc1 = True
+    opts_fc1@cnFillOn                     = True
+    opts_fc1@cnLineLabelInterval          = 2.0
+    opts_fc1@cnLineLabelFontHeightF       = 0.012
+    opts_fc1@cnLineLabelBackgroundColor   = "transparent"
+    opts_fc1@cnLineLabelPlacementMode     = "constant"
+
+  ; Contour lines and labels off
+    opts_fc1@cnLinesOn                    = False
+    opts_fc1@cnInfoLabelOn                = False
+
+  ; Colourmap selection 
+    opts_fc1@cnLevelSelectionMode         = "ExplicitLevels"
+    ; gsn_define_colormap(wks,"radar_new1")
+    ; cmap1 = read_colormap_file("radar_new")
+    ; opts_fc1@cnFillPalette                = cmap1
+
+  ; Match Met Office radar colours (white,blue (lgt/mid/drk),green,yellow,orange,red,pink,white)
+    opts_fc1@cnLevels                     = (/0.3,0.75,1.5,3.0,6.0,12.0,24.0,48.0,96.0/)
+    opts_fc1@cnFillColors                 = (/0,2,3,4,5,7,8,9,12,13/)
+
 ;=========================================
 ; Plot either MSLP or 10-m streamlines
 ;=========================================
  
   ; Plot data
-    prcp_plot    = gsn_csm_contour_map(wks,rain_acc(it,:,:),opts_fc)
+    cloud_plot    = gsn_csm_contour_map(wks,lc_arr(it,:,:),opts_fc1)
+    cloud_plot1   = gsn_csm_contour(wks,mc_arr(it,:,:),opts_fc)
+    cloud_plot2   = gsn_csm_contour(wks,hc_arr(it,:,:),opts_fc)
 
-    if (var .eq. "str") then 
-     ovr_plot     = gsn_csm_streamline(wks,u_plot(it,:,:),v_plot(it,:,:),opts_str)
-     overlay(prcp_plot, ovr_plot)
-    else
-     ovr_plot     = gsn_csm_contour(wks,slp_plot(it,:,:),opts_mslp)
-     overlay(prcp_plot, ovr_plot)
-    end if 
+    overlay(cloud_plot, cloud_plot1)
+    overlay(cloud_plot, cloud_plot2)
 
-    plot          = prcp_plot
+    plot          = cloud_plot
     draw(plot)
     frame(wks)
 

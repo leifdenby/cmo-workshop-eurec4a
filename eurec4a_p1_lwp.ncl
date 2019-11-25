@@ -203,25 +203,36 @@ begin
     lat0    = f->latitude ; ({t0::})
     lon0    = f->longitude ; ({n0:n1})
 
-  ; Model height levels
-  ; Dimension '1' (numbering starts from 0) for all 4D variables below 
-    z       = f->hybrid_ht_1
+    ; Model height levels
+    ; Dimension '1' (numbering starts from 0) for all 4D variables below 
+  z       = f->hybrid_ht_1
+print(z)
+
+  ; WILL COME FROM SAM :) 
+  do it = 0, dimsizes(z)-1
+dz = z(it+1,:,:) - z(:-1,:,:)
+  end do
+
+
+  ; TODO:
+  ; 1) work out how to calculate the density, we need the liquid density right?
+  ; 2) work out how to calculate dz, Sam has code snippet to do this
 
   ; Either calculate mixing ratio using 'mixhum_ptrh' function
   ; https://www.ncl.ucar.edu/Document/Functions/Built-in/mixhum_ptrh.shtml
   ; and then using mixing ratio and density to calculate LWP   
 
   ; Specific humidity 
-    q_arr(dt,:,:,:)     = f->q_1(it,:,:,:)
-    
+q_arr(dt,:,:,:)     = f->q_1(it,:,:,:)
+
   ; Potential temperature
-    pt_arr(dt,:,:,:)    = f->theta(it,:,:,:)
+pt_arr(dt,:,:,:)    = f->theta(it,:,:,:)
 
   ; Pressure 
-    p_arr(dt,:,:,:)     = f->p_1(it,:,:,:)
+p_arr(dt,:,:,:)     = f->p_1(it,:,:,:)
 
   ; (1) calculate temperature from potential temperature, giving us density 
-    rho_arr(dt,:,:,:)   = 
+  rho_arr(dt,:,:,:)   = 
 
   ; (2) 
 
@@ -229,216 +240,199 @@ begin
   ; https://www.ncl.ucar.edu/Document/Functions/Built-in/conform_dims.shtml
 
   ; OR, calculate the vertical integral of 'QCL' (cloud liquid water, output on model levels  
-  ; in units of kg/kg)  
+      ; in units of kg/kg)  
 
   ; Cloud liquid water 
-    qcl_arr(dt,:,:,:)   = f->QCL(it,:,:,:)
+qcl_arr(dt,:,:,:)   = f->QCL(it,:,:,:)
 
   ; Vertical integral using something similar to...
 
   ; Tidy up
-    delete([/utc_date,year,month,day,hour,minute,second,time/])
+delete([/utc_date,year,month,day,hour,minute,second,time/])
 
   ; Advance counter variables (time)
-    ct  = ct + 1
-    dt  = dt + 1 
+  ct  = ct + 1
+  dt  = dt + 1 
 
-   end do     ; End time loop (do it = 0, tm1-1)
+  end do     ; End time loop (do it = 0, tm1-1)
 
   end do      ; End input file loop (do nf = 0, numINPUT0-1)
 
- end do       ; End 'initialisation time' loop
+  end do       ; End 'initialisation time' loop
 
-;================================
-; Calculate liquid water path 
-;================================
+  ;================================
+  ; Calculate liquid water path 
+  ;================================
 
-; Calculate vertical integral using something similar to below... 
-; See function page online (http://www.ncl.ucar.edu/Document/Functions/Built-in/dim_sum_n.shtml)
-; 'dim_sum_n_Wrap' is identical to 'dim_sum_n' --> just retains metadata
+  ; Calculate vertical integral using something similar to below... 
+  ; See function page online (http://www.ncl.ucar.edu/Document/Functions/Built-in/dim_sum_n.shtml)
+  ; 'dim_sum_n_Wrap' is identical to 'dim_sum_n' --> just retains metadata
   do it = 0, ntimes-1
-   lwp_arr(dt,:,:) = dim_sum_n_Wrap(qcl_arr(dt,:,:,:),0)
+lwp_arr(dt,:,:) = dim_sum_n_Wrap(qcl_arr(dt,:,:,:),0)
   end do 
 
-; If script complains about lack of lat/lon information, add a line similar to below
-; This will copy the coordinate metadata from an existing variable to a new one 
-;  copy_VarCoords(q_arr(:,0,:,:), tpw_arr)
+  ; If script complains about lack of lat/lon information, add a line similar to below
+  ; This will copy the coordinate metadata from an existing variable to a new one 
+  ;  copy_VarCoords(q_arr(:,0,:,:), tpw_arr)
 
-;==================================
-; Loop over times and plot data
-;================================== 
+  ;==================================
+  ; Loop over times and plot data
+  ;================================== 
 
- do it = 0, rsize-1
+  do it = 0, rsize-1
 
   print("Working on time: "+time_arr(it) )
 
   ; Output file location and type
-    out_dir = "~/public_html/eurec4a/prac1/"+dstr+"/n_atl/"+dat_out+"/"
-    output  = out_dir+"lwp_"+gstr+"_"+title_arr(it)
-    wks     = gsn_open_wks(opt, output)
+  out_dir = "~/public_html/eurec4a/prac1/"+dstr+"/n_atl/"+dat_out+"/"
+  output  = out_dir+"lwp_"+gstr+"_"+title_arr(it)
+wks     = gsn_open_wks(opt, output)
 
   ; Load colour table
   ; EDIT to colour table of your choice 
   ; (http://www.ncl.ucar.edu/Document/Graphics/color_table_gallery.shtml)
-    gsn_define_colormap(wks,"prcp_new")
+  gsn_define_colormap(wks,"prcp_new")
 
-;==========================
-; Options for plotting
-;==========================
+  ;==========================
+  ; Options for plotting
+  ;==========================
 
   ; Filled contours
-    opts_fc                               = True
-    opts_fc@cnFillOn                      = True
-    opts_fc@cnLineLabelInterval           = 2.0
-    opts_fc@cnLineLabelFontHeightF        = 0.012
-    opts_fc@cnLineLabelBackgroundColor    = "transparent"
-    opts_fc@cnLineLabelPlacementMode      = "constant"
-    opts_fc@cnLinesOn                     = False
-    opts_fc@cnInfoLabelOn                 = False
-    opts_fc@cnLevelSelectionMode          = "ExplicitLevels"
+  opts_fc                               = True
+  opts_fc@cnFillOn                      = True
+  opts_fc@cnLineLabelInterval           = 2.0
+  opts_fc@cnLineLabelFontHeightF        = 0.012
+  opts_fc@cnLineLabelBackgroundColor    = "transparent"
+  opts_fc@cnLineLabelPlacementMode      = "constant"
+  opts_fc@cnLinesOn                     = False
+  opts_fc@cnInfoLabelOn                 = False
+  opts_fc@cnLevelSelectionMode          = "ExplicitLevels"
 
-    opts_fc@cnLevels                      = (/10., 15., 20., 25., 30., \
-                                              35., 40., 45., 47.5, 50., 52.5, 55./)
-    opts_fc@cnFillColors                  = (/0,3,4,5,6,7,8,9,10,11,12,13,14/)
+  opts_fc@cnLevels                      = (/10., 15., 20., 25., 30., \
+      35., 40., 45., 47.5, 50., 52.5, 55./)
+opts_fc@cnFillColors                  = (/0,3,4,5,6,7,8,9,10,11,12,13,14/)
 
   ; Labelbar resources 
-    opts_fc@lbLabelBarOn                 = True
-    opts_fc@lbBoxEndCapStyle             = "TriangleBothEnds"    ; Labelbar end shape
-    opts_fc@lbPerimOn                    = False                 ; Perimeter on/off
-    opts_fc@lbLabelFontHeightF           = 0.0125
-    opts_fc@lbLabelFont                  = "Helvetica"
-    opts_fc@lbPerimFill                  = 0
-    opts_fc@lbPerimFillColor             = -1
+  opts_fc@lbLabelBarOn                 = True
+  opts_fc@lbBoxEndCapStyle             = "TriangleBothEnds"    ; Labelbar end shape
+  opts_fc@lbPerimOn                    = False                 ; Perimeter on/off
+  opts_fc@lbLabelFontHeightF           = 0.0125
+  opts_fc@lbLabelFont                  = "Helvetica"
+  opts_fc@lbPerimFill                  = 0
+  opts_fc@lbPerimFillColor             = -1
 
   ; Labelbar position --> EDIT when producing plots for practical 2 (otherwise too big)
-    opts_fc@lbOrientation                = "Horizontal"
-    opts_fc@pmLabelBarSide               = "Top"
-    opts_fc@pmLabelBarWidthF             = 0.40
-    opts_fc@pmLabelBarHeightF            = 0.05
-    if (lb .eq. "top") then
-     opts_fc@pmLabelBarOrthogonalPosF     = -1.00 
-     opts_fc@pmLabelBarParallelPosF       = 0.70
+  opts_fc@lbOrientation                = "Horizontal"
+  opts_fc@pmLabelBarSide               = "Top"
+  opts_fc@pmLabelBarWidthF             = 0.40
+  opts_fc@pmLabelBarHeightF            = 0.05
+  if (lb .eq. "top") then
+  opts_fc@pmLabelBarOrthogonalPosF     = -1.00 
+  opts_fc@pmLabelBarParallelPosF       = 0.70
   ; Move lb up from centre; left from centre
-    elseif (lb .eq. "bot") then 
-     opts_fc@pmLabelBarOrthogonalPosF     = -0.16
-     opts_fc@pmLabelBarParallelPosF       = 0.30 
-    end if 
+  elseif (lb .eq. "bot") then 
+  opts_fc@pmLabelBarOrthogonalPosF     = -0.16
+  opts_fc@pmLabelBarParallelPosF       = 0.30 
+  end if 
 
   ; Labelbar title resources (turn title on; font size; font; string; position; move up/down) 
-    opts_fc@lbTitleOn                    = True
-    opts_fc@lbTitleFontHeightF           = 0.0125
-    opts_fc@lbTitleFont                  = "Helvetica"
-    opts_fc@lbTitleString                = "Liquid water path ("+lwp_arr@units+")"
-    opts_fc@lbTitlePosition              = "Top"            
-    opts_fc@lbTitleOffsetF               = 0                
+  opts_fc@lbTitleOn                    = True
+  opts_fc@lbTitleFontHeightF           = 0.0125
+  opts_fc@lbTitleFont                  = "Helvetica"
+  opts_fc@lbTitleString                = "Liquid water path ("+lwp_arr@units+")"
+  opts_fc@lbTitlePosition              = "Top"            
+  opts_fc@lbTitleOffsetF               = 0                
 
   ; Do not draw plot/advance frame 
-    opts_fc@gsnDraw                      = False
-    opts_fc@gsnFrame                     = False
-    opts_fc@gsnAddCyclic                 = False
+  opts_fc@gsnDraw                      = False
+  opts_fc@gsnFrame                     = False
+  opts_fc@gsnAddCyclic                 = False
 
-    opts_fc@mpLimitMode                  = "LatLon"
-    opts_fc@mpMinLatF                    = lat0(0) + 0.5
-    opts_fc@mpMinLonF                    = lon0(0) + 0.5
-    opts_fc@mpMaxLatF                    = lat0(dimsizes(lat0)-1) - 0.5
-    opts_fc@mpMaxLonF                    = lon0(dimsizes(lon0)-1) - 0.5
+  opts_fc@mpLimitMode                  = "LatLon"
+  opts_fc@mpMinLatF                    = lat0(0) + 0.5
+  opts_fc@mpMinLonF                    = lon0(0) + 0.5
+  opts_fc@mpMaxLatF                    = lat0(dimsizes(lat0)-1) - 0.5
+  opts_fc@mpMaxLonF                    = lon0(dimsizes(lon0)-1) - 0.5
 
   ; Orientate the grid to lie over the North Atlantic 
-    opts_fc@mpCenterLonF                 = 180.0
+  opts_fc@mpCenterLonF                 = 180.0
 
-    opts_fc@tmXTOn                       = "False"    ; No tickmarks on top x-axis
-    opts_fc@tmYROn                       = "False"    ; No tickmarks on right y-axis
+  opts_fc@tmXTOn                       = "False"    ; No tickmarks on top x-axis
+  opts_fc@tmYROn                       = "False"    ; No tickmarks on right y-axis
 
   ; Add and customise title string to overlay --> possibly also EDIT for practical 2 
-    opts_fc@tiMainString                 = title_arr(it)
-    opts_fc@tiMainOffsetYF               = -0.06
-    opts_fc@tiMainOffsetXF               = -0.28
-    opts_fc@tiMainFontHeightF            = 0.015
-    opts_fc@gsnLeftString                = ""
-    opts_fc@gsnRightString               = ""
+opts_fc@tiMainString                 = title_arr(it)
+  opts_fc@tiMainOffsetYF               = -0.06
+  opts_fc@tiMainOffsetXF               = -0.28
+  opts_fc@tiMainFontHeightF            = 0.015
+  opts_fc@gsnLeftString                = ""
+  opts_fc@gsnRightString               = ""
 
   ; Additional plotting resources (land/ocean colour etc, national borders)
-    opts_fc@mpDataBaseVersion            = "Ncarg4_1" ; More recent database                    
-    opts_fc@mpDataSetName                = "Earth..4" ; High resolution                         
-    opts_fc@mpOutlineBoundarySets        = "National" ; National borders                        
-    opts_fc@mpGeophysicalLineColor       = "black"    ; Colour borders black                    
-    opts_fc@mpGeophysicalLineThicknessF  = 2.0        ; Border line thickness                   
+  opts_fc@mpDataBaseVersion            = "Ncarg4_1" ; More recent database                    
+  opts_fc@mpDataSetName                = "Earth..4" ; High resolution                         
+  opts_fc@mpOutlineBoundarySets        = "National" ; National borders                        
+  opts_fc@mpGeophysicalLineColor       = "black"    ; Colour borders black                    
+  opts_fc@mpGeophysicalLineThicknessF  = 2.0        ; Border line thickness                   
 
-    opts_fc@pmTickMarkDisplayMode        = "Always"   ; Turn on map tickmarks                   
-    opts_fc@tmXBMajorLengthF             = 0.007      ; Change tickmark length                  
-    opts_fc@tmXBLabelStride              = 1          ; Skip every other label (x)              
-    opts_fc@tmYLLabelStride              = 1          ; Skip every other label (y)              
-    opts_fc@tmXTOn                       = "False"    ; No tickmarks on top x-axis              
-    opts_fc@tmYROn                       = "False"    ; No tickmarks on right y-axis            
-    opts_fc@gsnMaximize                  = True       ; Maximise plot size  
+  opts_fc@pmTickMarkDisplayMode        = "Always"   ; Turn on map tickmarks                   
+  opts_fc@tmXBMajorLengthF             = 0.007      ; Change tickmark length                  
+  opts_fc@tmXBLabelStride              = 1          ; Skip every other label (x)              
+  opts_fc@tmYLLabelStride              = 1          ; Skip every other label (y)              
+  opts_fc@tmXTOn                       = "False"    ; No tickmarks on top x-axis              
+  opts_fc@tmYROn                       = "False"    ; No tickmarks on right y-axis            
+  opts_fc@gsnMaximize                  = True       ; Maximise plot size  
 
   ; Make lat/lon labels smaller
-    opts_fc@tmYLLabelFontHeightF         = 0.01
-    opts_fc@tmXBLabelFontHeightF         = 0.01
+  opts_fc@tmYLLabelFontHeightF         = 0.01
+  opts_fc@tmXBLabelFontHeightF         = 0.01
 
   ; Workaround to 'turn off' tickmarks
-    opts_fc@tmXBMajorLengthF             = 0 
-    opts_fc@tmYLMajorLengthF             = 0 
-    opts_fc@tmXBMinorLengthF             = 0 
-    opts_fc@tmYLMinorLengthF             = 0 
+  opts_fc@tmXBMajorLengthF             = 0 
+  opts_fc@tmYLMajorLengthF             = 0 
+  opts_fc@tmXBMinorLengthF             = 0 
+  opts_fc@tmYLMinorLengthF             = 0 
 
   ; Move lat/lon labels inside the plot boundaries 
-    opts_fc@tmXBLabelDeltaF              = -2.50
-    opts_fc@tmYLLabelDeltaF              = -3.75
+  opts_fc@tmXBLabelDeltaF              = -2.50
+  opts_fc@tmYLLabelDeltaF              = -3.75
 
   ; Overlay latitude & longitude grid
-    opts_fc@mpGridAndLimbOn              = True       ; Turn on lat/lon lines
-    opts_fc@mpGridLineDashPattern        = 2          ; Dash pattern
-    opts_fc@mpGridLatSpacingF            = 5.0        ; Spacing (latitude)
-    opts_fc@mpGridLonSpacingF            = 5.0        ; Spacing (longitude)
-   
-  ; Horizontal wind vector resources                                                      
-    opts_vec                               = True
-    opts_vec@gsnDraw                       = False
-    opts_vec@gsnFrame                      = False
-    opts_vec@gsnAddCyclic                  = False
+  opts_fc@mpGridAndLimbOn              = True       ; Turn on lat/lon lines
+  opts_fc@mpGridLineDashPattern        = 2          ; Dash pattern
+  opts_fc@mpGridLatSpacingF            = 5.0        ; Spacing (latitude)
+  opts_fc@mpGridLonSpacingF            = 5.0        ; Spacing (longitude)
 
-    opts_vec@vcGlyphStyle                  = "LineArrow"   ; draw windbarbs               
-    opts_vec@vcRefMagnitudeF               = 10.0          ; ref vec = max vector         
-    opts_vec@vcRefLengthF                  = 0.02          ; length of reference vector   
-    opts_vec@vcMinDistanceF                = 0.06          ; distance between wind barbs  
-    opts_vec@vcLineArrowThicknessF         = 3.0           ; windbarb line thickness      
-    opts_vec@vcLineArrowColor              = "black"       ; windbarb colour              
-    opts_vec@gsnMaximize                   = True          ; Maximise plot size           
-    opts_vec@gsnRightString                = ""
-    opts_vec@gsnLeftString                 = ""
-    opts_vec@tiXAxisString                 = ""
+  ; Horizontal wind vector resources                                                      
+  opts_vec                               = True
+  opts_vec@gsnDraw                       = False
+  opts_vec@gsnFrame                      = False
+  opts_vec@gsnAddCyclic                  = False
+
+  opts_vec@vcGlyphStyle                  = "LineArrow"   ; draw windbarbs               
+  opts_vec@vcRefMagnitudeF               = 10.0          ; ref vec = max vector         
+  opts_vec@vcRefLengthF                  = 0.02          ; length of reference vector   
+  opts_vec@vcMinDistanceF                = 0.06          ; distance between wind barbs  
+  opts_vec@vcLineArrowThicknessF         = 3.0           ; windbarb line thickness      
+  opts_vec@vcLineArrowColor              = "black"       ; windbarb colour              
+  opts_vec@gsnMaximize                   = True          ; Maximise plot size           
+  opts_vec@gsnRightString                = ""
+  opts_vec@gsnLeftString                 = ""
+  opts_vec@tiXAxisString                 = ""
 
   ; Turn on reference vector, and move it up and left 
-    opts_vec@vcRefAnnoOn                   = True
-    opts_vec@vcRefAnnoParallelPosF         = 0.24
-    opts_vec@vcRefAnnoOrthogonalPosF       = -0.17
+  opts_vec@vcRefAnnoOn                   = True
+  opts_vec@vcRefAnnoParallelPosF         = 0.24
+  opts_vec@vcRefAnnoOrthogonalPosF       = -0.17
 
-;=================
-; Plot the data
-;=================
+  ;=================
+  ; Plot the data
+  ;=================
 
   ; Filled contour plot (EDIT --> follow other scripts in directory)
   ; Notation is 'gsn_csm_contour_map' to produce the plot structure
   ; and then 'gsn_csm_contour' to overlay additional filled contour data
-    lc_fill   = gsn_csm_contour_map(wks, lc_arr(it,:,:), opts_fc)
-
-  ; Overlay additonal cloud data onto original plot using 'gsn_csm_contour'
-  ; (need to create med cloud resources 'opts_fc_med')
-    mc_fill   = gsn_csm_contour(wks, mc_arr(it,:,:), opts_fc_med)
-
-  ; Also overlay upper-level cloud data if require
-  ; (need to create high cloud resources 'opts_fc_high') 
-    hc_fill   = gsn_csm_contour(wks, hc_arr(it,:,:), opts_fc_high)
-
-  ; Additional line contour + wind vector plots (uncomment if needed) 
-;    cont_plot = gsn_csm_contour(wks,tpw_arr(it,:,:),opts_lc)
-;    vec_plot  = gsn_csm_vector(wks,u_arr(it,:,:),v_arr(it,:,:),opts_vec)
-
-  ; Finally, overlay required plots 
-    overlay(lc_fill,mc_fill)
-    overlay(lc_fill,hc_fill)
-    overlay(lc_fill,vec_plot)
+    lc_fill   = gsn_csm_contour_map(wks, lwp_arr(it,:,:), opts_fc)
 
   ; Draw plot and advance frame 
     plot = lc_fill
